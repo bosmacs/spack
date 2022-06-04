@@ -5,6 +5,9 @@
 
 from spack import *
 
+from llnl.util.filesystem import join_path, mkdirp
+from llnl.util.symlink import symlink
+
 
 class Gmsh(CMakePackage):
     """Gmsh is a free 3D finite element grid generator with a built-in CAD engine
@@ -60,6 +63,7 @@ class Gmsh(CMakePackage):
     variant('eigen',       default=False, description='Build with Eigen (built-in or 3rd party)')
     variant('voropp',      default=True,  description='Build with voro++ (built-in or 3rd party')
     variant('cgns',        default=True,  description='Build with CGNS')
+    variant('python',      default=True,  description='Enable Python bindings')
 
     # https://gmsh.info/doc/texinfo/gmsh.html#Compiling-the-source-code
     # We make changes to the GMSH default, such as external blas.
@@ -99,6 +103,8 @@ class Gmsh(CMakePackage):
     conflicts('+oce', when='+opencascade')
     conflicts('+metis', when='+external',
               msg="External Metis cannot build with GMSH")
+
+    extends('python', when='+python')
 
     def cmake_args(self):
         spec = self.spec
@@ -166,3 +172,10 @@ class Gmsh(CMakePackage):
             options.append(self.define('ENABLE_COMPRESSED_IO', True))
 
         return options
+
+    @run_after('install')
+    def symlink_python(self):
+        pkg = self.spec['python'].package
+
+        mkdirp(pkg.purelib)
+        symlink(join_path(self.prefix.lib, 'gmsh.py'), join_path(self.prefix, pkg.purelib, 'gmsh.py'))
